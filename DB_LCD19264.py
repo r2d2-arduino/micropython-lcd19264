@@ -30,9 +30,9 @@ Pinout
 3 and 19 pins are used to adjust the display contrast through a resistor.
 I use a 1 Mega Ohm variable resistor. Acceptable contrast ~270kOm
 
-*~*~**~*~*~*~**~*~**~*~*~*
-*~*~* Слава Україні! *~*~*
-*~*~**~*~*~*~**~*~**~*~*~*
+*~*~**~*~*~*~**~*~**~*~*~*~*
+*~*~* Support Ukraine! *~*~*
+*~*~**~*~*~*~**~*~**~*~*~*~*
 
 """
 import framebuf
