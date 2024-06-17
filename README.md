@@ -27,11 +27,11 @@ I use a 1 Mega Ohm variable resistor. Acceptable contrast ~270kOm
 **Code example:**
 
 ```python
-# Work on Raspbery Pi Pico. For other controllers - check available pins!
+# Works on Raspbery Pi Pico. For other controllers - check available pins!
 
 from DB_LCD19264 import DB_LCD19264
 
-lcd = DB_LCD19264(rs= 29, rw = 28, en = 27, rst = 8, cs1 = 14, cs2 = 15, cs3 = 26,
+lcd = DB_LCD19264(rs = 29, rw = 28, en = 27, rst = 8, cs1 = 14, cs2 = 15, cs3 = 26,
                   db0 = 0, db1 = 1, db2 = 2, db3 = 3, db4 = 4, db5 = 5, db6 = 6, db7 = 7)
 
 lcd.text('MicroPython!  1234567890', 0, 1, 1)
