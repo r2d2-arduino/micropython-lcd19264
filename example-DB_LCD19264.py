@@ -1,3 +1,5 @@
+# This example works on Raspberry Pico. Other controllers may need different pins
+
 from DB_LCD19264 import DB_LCD19264
 import time
 
