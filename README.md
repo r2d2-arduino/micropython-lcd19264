@@ -27,6 +27,8 @@ I use a 1 Mega Ohm variable resistor. Acceptable contrast ~270kOm
 **Code example:**
 
 ```python
+# Work on Raspbery Pi Pico. For other controllers - check available pins!
+
 from DB_LCD19264 import DB_LCD19264
 
 lcd = DB_LCD19264(rs= 29, rw = 28, en = 27, rst = 8, cs1 = 14, cs2 = 15, cs3 = 26,
