@@ -16,6 +16,7 @@ Library for LCD 19264 display. Uses Framebuffer class. Sends data to display via
 |...|	DB..|	} Data bus
 |14 |	DB7	|	}
 |15 |	CS1	|	Chip 1 selection L: Active
+|16 | RST | Reset signal L: Active
 |17 |	CS2	|	Chip 2 selection L: Active
 |18 |	CS3	|	Chip 3 selection L: Active
 |19 |	Vout|	-10v Out voltage for LCD driving
