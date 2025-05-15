@@ -1,7 +1,7 @@
 # micropython-lcd19264
 Library for LCD 19264 display. Uses Framebuffer class. Sends data to display via Data bus.
 
-![Image](./LCD19264.jpg)
+![Image](../LCD19264.jpg)
 
 **Pinout**
 |N  | Name | Comments |
