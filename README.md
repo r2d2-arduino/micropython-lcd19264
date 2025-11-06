@@ -41,6 +41,7 @@ lcd.show()
 ## File Structure:
 * **lcd19264.py** - Main library LCD19264 ( Suitable for Esp32-family, RP2 )
 * **lcd19264_rp2.py** - Main library LCD19264 ( Raspberry Pi Pico only ). Much faster than lcd19264.py
+* **draw_fb_mono.py** - Drawing library for monochrome displays
 * **examples/** - a set of examples for using the library lcd19264
 * **examples_rp2/** - a set of examples for using the library lcd19264_rp2
 * **for_examples/** - files related to the examples
