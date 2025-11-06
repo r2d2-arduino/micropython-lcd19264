@@ -1,5 +1,5 @@
 """
-v 0.1.10
+v 0.2.2
 
 LCD19264 is a FrameBuffer based MicroPython driver for the graphical
 LiquidCrystal LCD19264 display.
@@ -35,13 +35,12 @@ Pinout
 I use a 1 Mega Ohm variable resistor. Acceptable contrast ~270kOm
 
 """
-from framebuf import FrameBuffer, MONO_VLSB, MONO_HLSB
-from time import sleep_us
 from machine import Pin
+from time import sleep_us
+from draw_fb_mono import DRAW_FB_MONO
 
 LCD_WIDTH        = const(192)
 LCD_HEIGHT       = const(64)
-LCD_BUFFSIZE     = const( LCD_WIDTH * LCD_HEIGHT // 8 )
 
 LCD_ADDR         = const(0x80)
 LCD_DISPLAY_ON   = const(0x3F)
@@ -51,8 +50,9 @@ LCD_ADDR_X       = const(0xB8)
 LCD_ADDR_Z       = const(0xC0)
 LCD_EMPTY        = const(0x00)
 
-class LCD19264( FrameBuffer ):
-    def __init__( self, rs, rw, en, rst, cs1, cs2, cs3, db0, db1, db2, db3, db4, db5, db6, db7 ):
+class LCD19264( DRAW_FB_MONO ):
+    def __init__( self, rs, rw, en, rst, cs1, cs2, cs3,
+                  db0, db1, db2, db3, db4, db5, db6, db7 ):
         ''' Main constructor '''
         
         #Initialization of pins
@@ -78,17 +78,8 @@ class LCD19264( FrameBuffer ):
         self.width  = LCD_WIDTH
         
         self._rotation = 0
-        self._text_wrap = False
-        self._font = None
-
-        # Alternative inverted palette for text
-        self._palette = FrameBuffer( bytearray(2), 2, 1, MONO_HLSB )
-        self._palette.pixel(0, 0, 1) # bg = 1
-        self._palette.pixel(1, 0, 0) # fg = 0  
-            
-        # Initialize the FrameBuffer
-        self.buffer = bytearray( LCD_BUFFSIZE ) 
-        super().__init__( self.buffer, self.width, self.height, MONO_VLSB )
+        
+        super().__init__( self.width, self.height )
 
         self._init()
         
@@ -227,39 +218,50 @@ class LCD19264( FrameBuffer ):
         Args
         rotation (int): True - rotation is On, False - rotation is Off
         '''
-        self._rotation = bool(rotation)
-            
-    @micropython.viper
-    def _reverse_bits( self, byte: int ) -> int:
-        ''' Reverse bits 0100 0111 => 1110 0010
-        Args
-        byte (int): Income byte
-        Return (int): Reversed byte
-        '''
-        result = 0
-        if byte & 1: result |= 1 << 7
-        if (byte >> 1) & 1: result |= 1 << 6
-        if (byte >> 2) & 1: result |= 1 << 5
-        if (byte >> 3) & 1: result |= 1 << 4
-        if (byte >> 4) & 1: result |= 1 << 3
-        if (byte >> 5) & 1: result |= 1 << 2
-        if (byte >> 6) & 1: result |= 1 << 1
-        if (byte >> 7) & 1: result |= 1
-        return result                          
+        self._rotation = int(rotation)                         
             
     @micropython.viper
     def show( self ):
+        
+        def reverse_bits( byte: int ) -> int:
+            ''' Reverse bits 0100 0111 => 1110 0010
+            Args
+            byte (int): Income byte
+            Return (int): Reversed byte
+            '''
+            result = 0
+            if byte & 1: result |= 1 << 7
+            if (byte >> 1) & 1: result |= 1 << 6
+            if (byte >> 2) & 1: result |= 1 << 5
+            if (byte >> 3) & 1: result |= 1 << 4
+            if (byte >> 4) & 1: result |= 1 << 3
+            if (byte >> 5) & 1: result |= 1 << 2
+            if (byte >> 6) & 1: result |= 1 << 1
+            if (byte >> 7) & 1: result |= 1
+            return result
+    
         ''' Send FrameBuffer to LCD '''
         # convert self to local variable
-        db0, db1, db2, db3, db4, db5, db6, db7 = self.db0, self.db1, self.db2, self.db3, self.db4, self.db5, self.db6, self.db7
-        en = self.en
+        db0_val = self.db0.value
+        db1_val = self.db1.value
+        db2_val = self.db2.value
+        db3_val = self.db3.value
+        db4_val = self.db4.value
+        db5_val = self.db5.value
+        db6_val = self.db6.value
+        db7_val = self.db7.value
+        
+        en_on = self.en.on
+        en_off = self.en.off    
+        
         rotation = int(self._rotation)
         buffer  = ptr8(self.buffer)
+        data = 0
         
         self._set_start(0)
         
         for chip in range(0, 3):
-            self._select_chip(chip + 1)
+            self._select_chip( chip + 1 )
             self._set_address(0) # Set begin position to 0
             for page in range(0, 8):
                 self._set_page(page)
@@ -271,189 +273,21 @@ class LCD19264( FrameBuffer ):
                 
                 for address in range(0, LCD_HEIGHT): 
                     if rotation:
-                        data = int(self._reverse_bits(buffer[LCD_WIDTH * 8 - 1 - address - posOffset]))
+                        data = int( reverse_bits(buffer[LCD_WIDTH * 8 - 1 - address - posOffset]) )
                     else:
-                        data = buffer[address + posOffset]
+                        data = buffer[ address + posOffset ]
                         
-                    db0.value(data & 1)
-                    db1.value(data & (1 << 1))
-                    db2.value(data & (1 << 2))
-                    db3.value(data & (1 << 3))
-                    db4.value(data & (1 << 4))
-                    db5.value(data & (1 << 5))
-                    db6.value(data & (1 << 6))
-                    db7.value(data & (1 << 7))
+                    db0_val( data & 1 )
+                    db1_val( data & 2 )
+                    db2_val( data & 4 )
+                    db3_val( data & 8 )
+                    db4_val( data & 16 )
+                    db5_val( data & 32 )
+                    db6_val( data & 64 )
+                    db7_val( data & 128 )
  
-                    en.on()
+                    en_on()
                     sleep_us(1)
-                    en.off()                 
+                    en_off()                 
                     
         self._write_cmd(LCD_DISPLAY_ON)
- 
-    """ ADDITIONAL FUNCTIONS """
- 
-    def set_font( self, font ):
-        """ Set font for text
-        Args
-        font (module): Font module generated by font_to_py.py
-        """
-        self._font = font
-
-    def set_text_wrap( self, on = True ):
-        """ Set text wrapping """
-        self._text_wrap = bool( on )  
-
-    def draw_text( self, text, x, y, color = 1 ):
-        """ Draw text on framebuffer
-        Args
-        x (int) : Start X position
-        y (int) : Start Y position
-        """
-        x_start = x
-        screen_height = self.height
-        screen_width  = self.width
-        wrap = self._text_wrap
-        
-        font = self._font
-
-        if font == None:
-            print("Font not set")
-            return False
-        
-        palette = self._palette
-
-        for char in text:   
-            glyph = font.get_ch(char)
-            glyph_height = glyph[1]
-            glyph_width  = glyph[2]
-                
-            if wrap and (x + glyph_width > screen_width): # End of row
-                x = x_start
-                y += glyph_height                
-            
-            fb = FrameBuffer( bytearray(glyph[0]), glyph_width, glyph_height, MONO_HLSB)
-            if color:
-                self.blit(fb, x, y)
-            else:
-                self.blit(fb, x, y, -1, palette)
-            
-            x += glyph_width
-
-    @micropython.viper
-    def draw_bitmap( self, bitmap, x:int, y:int, color:int ):
-        """ Draw a bitmap on framebuffer
-        Args
-        bitmap (bytes): Bitmap data
-        x      (int): Start X position
-        y      (int): Start Y position
-        color  (int): Color 0 or 1
-        """
-        fb = FrameBuffer( bitmap[0], bitmap[2], bitmap[1], MONO_HLSB )
-        if color:
-            self.blit(fb, x, y)
-        else:            
-            self.blit(fb, x, y, -1, self._palette)
-
-    @micropython.viper
-    def draw_bitmap_tran( self, bitmap, x:int, y:int, color:int ):
-        """ Draw a transparent bitmap on display
-        Args
-        bitmap (bytes): Bitmap data
-        x      (int): Start X position
-        y      (int): Start Y position
-        color  (int): Color 0 or 1
-        """
-        data   = ptr8(bitmap[0]) #memoryview to bitmap
-        height = int(bitmap[1])
-        width  = int(bitmap[2])
-        
-        i = 0
-        for h in range(height):
-            bit_len = 0
-            while bit_len < width:
-                byte = data[i]
-                xpos = bit_len + x
-                ypos = h + y                
-                #Drawing pixels when bit = 1
-                if (byte >> 7) & 1:
-                    self.pixel(xpos    , ypos, color)
-                if (byte >> 6) & 1:
-                    self.pixel(xpos + 1, ypos, color)
-                if (byte >> 5) & 1:
-                    self.pixel(xpos + 2, ypos, color)
-                if (byte >> 4) & 1:
-                    self.pixel(xpos + 3, ypos, color)
-                if (byte >> 3) & 1:
-                    self.pixel(xpos + 4, ypos, color)
-                if (byte >> 2) & 1:
-                    self.pixel(xpos + 5, ypos, color)
-                if (byte >> 1) & 1:
-                    self.pixel(xpos + 6, ypos, color)
-                if byte & 1:
-                    self.pixel(xpos + 7, ypos, color)
-
-                bit_len += 8
-                i += 1
-
-    def load_bmp( self, filename, x = 0, y = 0, color = 1 ):
-        """ Load monochromatic BMP image on framebuffer
-        Args
-        filename (string): filename of image, example: "rain.bmp"
-        x (int) : Start X position
-        y (int) : Start Y position
-        color  (int): Color 0 or 1
-        """
-        f = open(filename, 'rb')
-
-        if f.read(2) == b'BM':  #header
-            dummy    = f.read(8)
-            offset   = int.from_bytes(f.read(4), 'little')
-            dummy    = f.read(4) #hdrsize
-            width    = int.from_bytes(f.read(4), 'little')
-            height   = int.from_bytes(f.read(4), 'little')
-            planes   = int.from_bytes(f.read(2), 'little')
-            depth    = int.from_bytes(f.read(2), 'little')
-            compress = int.from_bytes(f.read(4), 'little')
-
-            if planes == 1 and depth == 1 and compress == 0: #compress method == uncompressed
-                f.seek(offset)
-                
-                self._send_bmp_to_buffer( f, x, y, width, height, color)
-            else:
-                print("Unsupported planes, depth, compress:", planes, depth, compress )
-                
-        f.close()    
-        
-    @micropython.viper
-    def _send_bmp_to_buffer( self, f, x:int, y:int, width:int, height:int, color:int ):
-        """ Send bmp-file to buffer
-        Args
-        f (object File) : Image file
-        x (int) : Start X position
-        y (int) : Start Y position        
-        width (int): Width of image frame
-        height (int): Height of image frame
-        color  (int): Color 0 or 1
-        """        
-        block_size = ((width + 31) // 32) * 4  
-        total_size = height * block_size
-        bitmap_size = height * width // 8
-        
-        bitmap = bytearray(bitmap_size)
-        bitmap_buffer = ptr8(bitmap)
-        
-        image_data = f.read(total_size)
-        image_buffer = ptr8(image_data)
-        
-        row_bytes = width // 8
-        for row in range(height): 
-            byte_offset = row_bytes * row 
-            block_offset = block_size * row 
-            for byte in range(row_bytes): 
-                if color == 1:
-                    bitmap_buffer[bitmap_size - 1 - byte_offset - byte] = image_buffer[block_offset + row_bytes - 1 - byte] ^ 0xff
-                else:
-                    bitmap_buffer[bitmap_size - 1 - byte_offset - byte] = image_buffer[block_offset + row_bytes - 1 - byte]
-
-        fb = FrameBuffer(bitmap, width, height, MONO_HLSB)
-        self.blit(fb, 0, 0)
